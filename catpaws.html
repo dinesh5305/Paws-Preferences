@@ -1,0 +1,330 @@
+<?php
+// Paws & Preferences - PHP All-In-One
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Paws & Preferences: Find Your Favourite Kitty</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #fdfdfd;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    /* Navigation bar */
+    #nav-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background-color: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 22px;
+    }
+
+    .title {
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .filter-icon {
+      font-size: 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 5px;
+      font-size: 6vw;
+      text-align: center;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    p {
+      color: #666;
+    }
+
+    #filter-panel {
+      margin-top: 10px;
+    }
+
+    #card-container {
+      position: relative;
+      width: 90%;
+      max-width: 350px;
+      height: 400px;
+      margin-top: 20px;
+    }
+
+    .cat-card {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      background-color: white;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .cat-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #action-buttons {
+      display: flex;
+      gap: 30px;
+      margin-top: 30px;
+      justify-content: center;
+    }
+
+    #action-buttons button {
+      width: 60px;
+      height: 60px;
+      font-size: 28px;
+      border-radius: 50%;
+      border: 3px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    #action-buttons button.dislike {
+      border-color: #ff4e4e;
+      color: #ff4e4e;
+    }
+
+    #action-buttons button.like {
+      border-color: #00c983;
+      color: #00c983;
+    }
+
+    #action-buttons button:hover {
+      transform: scale(1.1);
+      background-color: #f9f9f9;
+    }
+
+    #result {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    #liked-cats img {
+      width: 100px;
+      height: 100px;
+      margin: 5px;
+      border-radius: 8px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    button.restart {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    button.restart:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="nav-bar">
+    <span class="logo">🐾</span>
+    <span class="title">Paws & Preferences</span>
+    <button class="filter-icon" onclick="toggleFilter()">⚙️</button>
+  </div>
+
+  <div id="filter-panel" class="hidden">
+    <label>Filter by tag:
+      <select id="tag-filter">
+        <option value="">All</option>
+        <option value="cute">Cute</option>
+        <option value="sleepy">Sleepy</option>
+        <option value="funny">Funny</option>
+      </select>
+    </label>
+    <button onclick="applyFilter()">Apply</button>
+  </div>
+
+  <h1>🐾 Find Your Favourite Kitty</h1>
+  <p>Swipe right to like, left to skip</p>
+
+  <div id="card-container"></div>
+
+  <div id="action-buttons">
+    <button class="dislike" onclick="swipeLeft()">❌</button>
+    <button class="like" onclick="swipeRight()">💚</button>
+  </div>
+
+  <div id="result" class="hidden">
+    <h2>You liked these kitties 😽</h2>
+    <div id="liked-cats"></div>
+    <button class="restart" onclick="restart()">Start Again</button>
+  </div>
+
+  <script>
+    const TOTAL_CATS = 10;
+    const catContainer = document.getElementById("card-container");
+    const resultSection = document.getElementById("result");
+    const likedCatsDiv = document.getElementById("liked-cats");
+
+    let catImages = [];
+    let likedCats = [];
+    let currentCard = null;
+
+    for (let i = 0; i < TOTAL_CATS; i++) {
+      catImages.push(`https://cataas.com/cat?width=350&height=400&unique=${i}`);
+    }
+
+    function createCatCard(url) {
+      const card = document.createElement("div");
+      card.className = "cat-card";
+
+      const img = document.createElement("img");
+      img.src = url;
+      card.appendChild(img);
+
+      let startX = 0;
+
+      card.addEventListener("touchstart", e => {
+        startX = e.touches[0].clientX;
+      });
+
+      card.addEventListener("touchend", e => {
+        const endX = e.changedTouches[0].clientX;
+        const diff = endX - startX;
+        handleSwipe(diff, url, card);
+      });
+
+      card.addEventListener("mousedown", e => {
+        startX = e.clientX;
+      });
+
+      card.addEventListener("mouseup", e => {
+        const endX = e.clientX;
+        const diff = endX - startX;
+        handleSwipe(diff, url, card);
+      });
+
+      return card;
+    }
+
+    function handleSwipe(diff, url, card) {
+      if (diff > 50) {
+        likedCats.push(url);
+      }
+      removeCard(card);
+    }
+
+    function removeCard(card) {
+      card.style.opacity = "0";
+      setTimeout(() => {
+        catContainer.removeChild(card);
+        showNextCat();
+      }, 300);
+    }
+
+    let currentIndex = 0;
+
+    function showNextCat() {
+      if (currentIndex >= catImages.length) {
+        showResults();
+        return;
+      }
+
+      const card = createCatCard(catImages[currentIndex]);
+      currentCard = card;
+      catContainer.appendChild(card);
+      currentIndex++;
+    }
+
+    function swipeRight() {
+      if (currentCard) {
+        likedCats.push(currentCard.querySelector("img").src);
+        removeCard(currentCard);
+      }
+    }
+
+    function swipeLeft() {
+      if (currentCard) {
+        removeCard(currentCard);
+      }
+    }
+
+    function showResults() {
+      document.getElementById("card-container").classList.add("hidden");
+      document.getElementById("action-buttons").classList.add("hidden");
+      resultSection.classList.remove("hidden");
+
+      likedCats.forEach(url => {
+        const img = document.createElement("img");
+        img.src = url;
+        likedCatsDiv.appendChild(img);
+      });
+    }
+
+    function restart() {
+      location.reload();
+    }
+
+    function toggleFilter() {
+      document.getElementById("filter-panel").classList.toggle("hidden");
+    }
+
+    function applyFilter() {
+      const tag = document.getElementById('tag-filter').value;
+      catImages = [];
+      for (let i = 0; i < TOTAL_CATS; i++) {
+        const url = tag 
+          ? `https://cataas.com/cat/${tag}?width=350&height=400&unique=${i}`
+          : `https://cataas.com/cat?width=350&height=400&unique=${i}`;
+        catImages.push(url);
+      }
+      currentIndex = 0;
+      likedCats = [];
+      catContainer.innerHTML = '';
+      showNextCat();
+    }
+
+    showNextCat();
+  </script>
+
+</body>
+</html>
